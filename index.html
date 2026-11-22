@@ -168,28 +168,33 @@ header{
 }
 .btn-pin:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(26,158,143,.3);}
 
-/* ===== Passkey suggestion card (after login) ===== */
-.passkey-card{
-    background:linear-gradient(135deg,#ecfdf5,#f0fdfa);
-    border:2px solid var(--secondary);border-radius:var(--radius-lg);
-    padding:1.6rem 1.4rem;margin:1.5rem auto 0;max-width:420px;
-    text-align:center;animation:fadeUp .35s ease;
+/* ===== Forced biometric overlay (first login only) ===== */
+.bio-overlay{
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(15,23,42,.82);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center;padding:1rem;
 }
-.passkey-card .pk-icon{
-    width:64px;height:64px;margin:0 auto .8rem;display:flex;align-items:center;justify-content:center;
+.bio-overlay.active{display:flex;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.bio-modal{
+    background:#fff;border-radius:var(--radius-lg);padding:2.2rem 1.8rem;
+    max-width:440px;width:100%;box-shadow:var(--shadow-lg);text-align:center;
+    border:1px solid var(--border);
+}
+.bio-modal .bio-icon{
+    width:80px;height:80px;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;
     background:linear-gradient(135deg,var(--secondary),var(--primary));border-radius:50%;
-    color:#fff;font-size:1.6rem;
+    color:#fff;font-size:2rem;animation:pulse 1.8s infinite;
 }
-.passkey-card h3{color:var(--primary);font-size:1.05rem;font-weight:800;margin-bottom:.4rem;}
-.passkey-card p{color:var(--text-light);font-size:.84rem;margin-bottom:1rem;line-height:1.5;}
-.passkey-card .pk-actions{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;}
-.passkey-card .pk-actions button{flex:1;min-width:140px;}
-.btn-ghost{
-    background:transparent;color:var(--text-light);border:1.5px solid var(--border);
-    padding:.7rem 1.2rem;border-radius:var(--radius);font-family:inherit;font-weight:700;
-    font-size:.88rem;cursor:pointer;transition:all .3s;
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,158,143,.4);}50%{box-shadow:0 0 0 14px rgba(26,158,143,0);}}
+.bio-modal h3{color:var(--primary);font-size:1.25rem;font-weight:800;margin-bottom:.5rem;}
+.bio-modal p{color:var(--text-light);font-size:.9rem;margin-bottom:1.4rem;line-height:1.55;}
+.bio-modal .bio-note{
+    background:#fef3c7;border:1px solid #fde68a;border-radius:var(--radius);
+    padding:.7rem .9rem;font-size:.8rem;color:#92400e;margin-bottom:1.2rem;text-align:left;
 }
-.btn-ghost:hover{background:var(--bg);border-color:var(--text-light);}
+.bio-modal .bio-note i{margin-right:.4rem;}
+.bio-modal .form-msg{margin-top:1rem;text-align:center;}
 
 /* ===== Passkey badge in dashboard ===== */
 .passkey-badge{
@@ -243,32 +248,15 @@ header{
                 </button>
                 <div class="form-msg" id="loginMsg"></div>
             </form>
-            <div class="divider"><span>or</span></div>
-            <button type="button" id="bioLoginBtn" class="btn-scan" style="width:100%;">
-                <i class="fa-solid fa-fingerprint"></i> Login with Fingerprint
-            </button>
-            <div id="bioLoginMsg" style="font-size:.82rem;margin-top:.6rem;text-align:center;color:var(--text-light);"></div>
-        </div>
-    </div>
 
-    <!-- ================= PASSKEY SUGGESTION (بعد أول Login) ================= -->
-    <div id="passkeyPromptView" style="display:none;">
-        <div class="passkey-card">
-            <div class="pk-icon"><i class="fa-solid fa-fingerprint"></i></div>
-            <h3>Enable Fingerprint Login?</h3>
-            <p>
-                Save your login with your phone's fingerprint for faster, safer access next time.
-                You can always log in with your password too.
-            </p>
-            <div class="pk-actions">
-                <button type="button" id="enablePasskeyBtn" class="btn-scan">
-                    <i class="fa-solid fa-fingerprint"></i> Enable
+            <!-- زر البصمة مخفي افتراضياً — يظهر فقط إذا فيه بصمة مسجلة -->
+            <div id="bioLoginWrap" style="display:none;">
+                <div class="divider"><span>or</span></div>
+                <button type="button" id="bioLoginBtn" class="btn-scan" style="width:100%;">
+                    <i class="fa-solid fa-fingerprint"></i> Login with Fingerprint
                 </button>
-                <button type="button" id="skipPasskeyBtn" class="btn-ghost">
-                    Not now
-                </button>
+                <div id="bioLoginMsg" style="font-size:.82rem;margin-top:.6rem;text-align:center;color:var(--text-light);"></div>
             </div>
-            <div class="form-msg" id="passkeyMsg"></div>
         </div>
     </div>
 
@@ -331,6 +319,26 @@ header{
 
 </div>
 
+<!-- ================= FORCED FINGERPRINT OVERLAY (first login only) ================= -->
+<div class="bio-overlay" id="bioOverlay">
+    <div class="bio-modal">
+        <div class="bio-icon"><i class="fa-solid fa-fingerprint"></i></div>
+        <h3>Register Your Fingerprint</h3>
+        <p>
+            For your security, you must register your phone's fingerprint
+            <strong>before continuing</strong>. This will be your quick login method next time.
+        </p>
+        <div class="bio-note">
+            <i class="fa-solid fa-circle-info"></i>
+            This fingerprint is stored securely on your phone and linked to your account. You can still log in with your password.
+        </div>
+        <button type="button" id="setupBioBtn" class="btn-scan" style="width:100%;">
+            <i class="fa-solid fa-fingerprint"></i> Register My Fingerprint
+        </button>
+        <div class="form-msg" id="setupBioMsg"></div>
+    </div>
+</div>
+
 <script>
 /* ============================================================
    bioSafe — Patient Page (self-contained JS)
@@ -352,7 +360,7 @@ function formatDate(d){ if (!d) return '—'; return new Date(d).toLocaleDateStr
 
 /* ---------- State ---------- */
 let currentPatient = null;
-let pendingPatient = null;   // بعد login ناجح — بانتظار قرار المستخدم بشأن البصمة
+let pendingPatient = null;
 
 /* ============================================================
    WebAuthn: إنشاء Passkey (حفظ البصمة)
@@ -362,7 +370,7 @@ async function createPasskey(nationalId, fullName, onStatus){
         return { ok:false, error:'This browser does not support fingerprint login. Please use Chrome/Safari over HTTPS.' };
     }
     try {
-        if (onStatus) onStatus("Touch your phone's fingerprint sensor to save your login...");
+        if (onStatus) onStatus("Touch your phone's fingerprint sensor...");
 
         const challenge = crypto.getRandomValues(new Uint8Array(32));
         const userId    = new TextEncoder().encode(String(nationalId));
@@ -376,16 +384,18 @@ async function createPasskey(nationalId, fullName, onStatus){
             timeout: 60000
         }});
 
-        if (!cred) throw new Error('Fingerprint save was cancelled.');
+        if (!cred) throw new Error('Fingerprint registration was cancelled.');
         const id = bytesToBase64(new Uint8Array(cred.rawId));
         return { ok:true, credentialId:id };
     } catch (err) {
-        return { ok:false, error: err.message || 'Fingerprint save failed' };
+        return { ok:false, error: err.message || 'Fingerprint registration failed' };
     }
 }
 
 /* ============================================================
-   Password login — نجح؟ نعرض له خيار حفظ البصمة (إن لم تكن محفوظة)
+   Password login
+   - لو البصمة مش مسجلة → overlay إجباري
+   - لو البصمة مسجلة → داشبورد مباشرة
    ============================================================ */
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -405,31 +415,30 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
     const patient = mapPatient(data);
 
-    // إذا البصمة غير محفوظة → نعرض له كارت "Enable Fingerprint Login?"
+    // لا توجد بصمة مسجلة → إجبار على تسجيلها
     if (!data.mobile_credential_id){
         pendingPatient = patient;
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('passkeyPromptView').style.display = 'block';
-        document.getElementById('passkeyMsg').className = 'form-msg';
-        document.getElementById('passkeyMsg').textContent = '';
+        document.getElementById('bioOverlay').classList.add('active');
+        document.getElementById('setupBioMsg').className = 'form-msg';
+        document.getElementById('setupBioMsg').textContent = '';
         return;
     }
 
-    // البصمة محفوظة → داشبورد مباشرة
+    // توجد بصمة → داشبورد
     currentPatient = patient;
     showDashboard();
 });
 
 /* ============================================================
-   زر "Enable" — يحفظ البصمة
+   زر "Register My Fingerprint" في الـ overlay الإجباري
    ============================================================ */
-document.getElementById('enablePasskeyBtn').addEventListener('click', async () => {
+document.getElementById('setupBioBtn').addEventListener('click', async () => {
     if (!pendingPatient) return;
 
-    const btn = document.getElementById('enablePasskeyBtn');
-    const msg = document.getElementById('passkeyMsg');
+    const btn = document.getElementById('setupBioBtn');
+    const msg = document.getElementById('setupBioMsg');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Waiting...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Waiting for fingerprint...';
     msg.className = 'form-msg'; msg.textContent = '';
 
     const result = await createPasskey(
@@ -440,13 +449,12 @@ document.getElementById('enablePasskeyBtn').addEventListener('click', async () =
 
     if (!result.ok){
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Enable';
+        btn.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Register My Fingerprint';
         msg.className = 'form-msg err';
         msg.textContent = '❌ ' + result.error;
         return;
     }
 
-    // حفظ credentialId في الحساب
     const { error: updErr } = await supabaseClient
         .from('patients')
         .update({ mobile_credential_id: result.credentialId })
@@ -454,30 +462,20 @@ document.getElementById('enablePasskeyBtn').addEventListener('click', async () =
 
     if (updErr){
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Enable';
+        btn.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Register My Fingerprint';
         msg.className = 'form-msg err';
-        msg.textContent = '❌ Could not save: ' + updErr.message;
+        msg.textContent = '❌ Could not save fingerprint: ' + updErr.message;
         return;
     }
 
     msg.className = 'form-msg ok';
-    msg.textContent = '✅ Fingerprint saved! You can now log in with it.';
+    msg.textContent = '✅ Fingerprint saved! Opening your record...';
     await sleep(900);
 
     currentPatient = pendingPatient;
     pendingPatient = null;
-    document.getElementById('passkeyPromptView').style.display = 'none';
-    showDashboard();
-});
-
-/* ============================================================
-   زر "Not now" — يتخطى الحفظ ويدخل الداشبورد عادي
-   ============================================================ */
-document.getElementById('skipPasskeyBtn').addEventListener('click', () => {
-    if (!pendingPatient) return;
-    currentPatient = pendingPatient;
     pendingPatient = null;
-    document.getElementById('passkeyPromptView').style.display = 'none';
+    document.getElementById('bioOverlay').classList.remove('active');
     showDashboard();
 });
 
@@ -518,11 +516,46 @@ document.getElementById('bioLoginBtn').addEventListener('click', async () => {
 });
 
 /* ============================================================
+   إظهار زر "Login with Fingerprint" فقط لو المستخدم عنده بصمة مسجلة
+   - نتحقق من localStorage (اللي خزّناه بعد أول تسجيل بصمة)
+   - أو من وجود credential في المتصفح عبر isUserVerifyingPlatformAuthenticatorAvailable
+   ============================================================ */
+async function checkIfFingerprintAvailable(){
+    const wrap = document.getElementById('bioLoginWrap');
+
+    // 1) هل المتصفح يدعم البصمة؟
+    if (!window.PublicKeyCredential){
+        wrap.style.display = 'none';
+        return;
+    }
+
+    // 2) هل الجهاز فيه بصمة (platform authenticator)؟
+    try {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if (!available){
+            wrap.style.display = 'none';
+            return;
+        }
+    } catch (e){
+        wrap.style.display = 'none';
+        return;
+    }
+
+    // 3) هل المريض سجّل بصمة سابقة على هذا الجهاز/المتصفح؟
+    //    نخزن الـ nationalId في localStorage بعد أول تسجيل بصمة
+    const saved = localStorage.getItem('biosafe_biometric_id');
+    if (saved){
+        wrap.style.display = 'block';
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+
+/* ============================================================
    Dashboard
    ============================================================ */
 function showDashboard(){
     document.getElementById('loginView').style.display = 'none';
-    document.getElementById('passkeyPromptView').style.display = 'none';
     document.getElementById('dashboardView').classList.add('active');
     document.getElementById('logoutBtn').style.display = 'inline-flex';
 
@@ -531,7 +564,6 @@ function showDashboard(){
     document.getElementById('patBlood').textContent = currentPatient.bloodType || '—';
     document.getElementById('patDOB').textContent   = currentPatient.dateOfBirth || '—';
 
-    // عرض شارة البصمة فقط إذا كانت محفوظة
     const badgeWrap = document.getElementById('passkeyBadgeWrap');
     if (currentPatient.hasPasskey) badgeWrap.style.display = 'block';
     else badgeWrap.style.display = 'none';
@@ -665,19 +697,22 @@ function logout(){
     pendingPatient = null;
 
     document.getElementById('dashboardView').classList.remove('active');
-    document.getElementById('passkeyPromptView').style.display = 'none';
     document.getElementById('loginView').style.display = 'block';
     document.getElementById('logoutBtn').style.display = 'none';
+    document.getElementById('bioOverlay').classList.remove('active');
 
     document.getElementById('loginForm').reset();
     document.getElementById('bioLoginBtn').disabled = false;
     document.getElementById('bioLoginMsg').textContent = '';
 
-    const eb = document.getElementById('enablePasskeyBtn');
-    eb.disabled = false;
-    eb.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Enable';
-    document.getElementById('passkeyMsg').className = 'form-msg';
-    document.getElementById('passkeyMsg').textContent = '';
+    const sb = document.getElementById('setupBioBtn');
+    sb.disabled = false;
+    sb.innerHTML = '<i class="fa-solid fa-fingerprint"></i> Register My Fingerprint';
+    document.getElementById('setupBioMsg').className = 'form-msg';
+    document.getElementById('setupBioMsg').textContent = '';
+
+    // إعادة فحص إظهار زر البصمة
+    checkIfFingerprintAvailable();
 }
 
 function mapPatient(p){
@@ -692,6 +727,15 @@ function mapPatient(p){
         hasPasskey: !!p.mobile_credential_id
     };
 }
+
+/* ============================================================
+   عند تحميل الصفحة: فحص إظهار زر "Login with Fingerprint"
+   ============================================================ */
+(async function init(){
+    // تحقق من وجود بصمة سابقة محفوظة على هذا الجهاز
+    // نخزن nationalId بعد أول تسجيل بصمة ناجح
+    await checkIfFingerprintAvailable();
+})();
 </script>
 </body>
 </html>
